@@ -9,7 +9,12 @@ const fs = require(`fs`);
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 const tipeKamarModel = require("../models/index").Tipe_Kamar;
+const kamarModel = require("../models/index").Kamar;
+const pemesananModel = require("../models//index").Pemesanan
 const app = express();
+const cors = require("cors");
+const port = 3000;
+app.use(cors());
 
 // Define routes for tipe_kamar operations
 app.get("/", async (req, res) => {

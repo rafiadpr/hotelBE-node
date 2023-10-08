@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     tgl_check_out: DataTypes.DATE,
     nama_tamu: DataTypes.STRING,
     jumlah_kamar: DataTypes.INTEGER,
-    id_kamar: DataTypes.INTEGER,
+    id_tipe_kamar: DataTypes.INTEGER,
     status_pemesanan: DataTypes.STRING,
     id_user: DataTypes.INTEGER
   }, {

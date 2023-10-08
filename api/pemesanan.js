@@ -6,7 +6,11 @@ const moment = require("moment");
 const kamarModel = require("../models/index").Kamar;
 const pemesananModel = require("../models/index").Pemesanan;
 const detailPemesananModel = require("../models/index").Detail_Pemesanan;
+const tipeKamarModel = require("../models/index").Tipe_Kamar;
 const app = express();
+const cors = require("cors");
+const port = 3000;
+app.use(cors());
 
 function generateRandomNumber(n) {
   return Math.floor(Math.random() * 10 ** n)
@@ -29,6 +33,25 @@ async function generateUniqueBookingNumber() {
   return bookingNumber;
 }
 
+app.get("/checkin", async (req, res) => {
+  try {
+    // Get the tgl_check_in parameter from the query string
+    const tglCheckIn = new Date(req.query.tgl_check_in);
+    tglCheckIn.setHours(12, 0, 0); 
+
+    // If tgl_check_in is provided in the query, use it for filtering
+    if (tglCheckIn) {
+      const pemesanan = await pemesananModel.findOne({
+        where: { tgl_check_in: tglCheckIn },
+      });
+      res.json(pemesanan);
+    } 
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.get("/", async (req, res) => {
   try {
     const pemesanan = await pemesananModel.findAll();
@@ -47,8 +70,19 @@ app.post("/", async (req, res) => {
 
     // Set status_pemesanan to "baru"
     const status_pemesanan = "baru";
-    // const time =
-    //   today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+
+    const {
+      nomor_pemesanan,
+      nama_pemesan,
+      email_pemesan,
+      tgl_check_in,
+      tgl_check_out,
+      nama_tamu,
+      jumlah_kamar,
+      id_tipe_kamar, // Change id_kamar to id_tipe_kamar
+      id_user,
+    } = req.body;
+
     const nomorPemesanan = await generateUniqueBookingNumber();
 
     // Tanggal check-in yang dimasukkan oleh pengguna
@@ -63,19 +97,22 @@ app.post("/", async (req, res) => {
     const existingPemesanan = await pemesananModel.findOne({
       where: {
         tgl_check_in: tglCheckIn,
+        tgl_check_out: tglCheckOut, // Check both check-in and check-out dates
+        id_tipe_kamar, // Change id_kamar to id_tipe_kamar
       },
     });
-    const {
-      nomor_pemesanan,
-      nama_pemesan,
-      email_pemesan,
-      tgl_check_in,
-      tgl_check_out,
-      nama_tamu,
-      jumlah_kamar,
-      id_kamar,
-      id_user,
-    } = req.body;
+
+    const availableRoom = await kamarModel.findOne({
+      where: {
+        tersedia: "Tersedia",
+        id_tipe_kamar: id_tipe_kamar, // Filter by room type if needed
+      },
+    });
+
+    if (!availableRoom) {
+      // Handle the case when no available room is found
+      return res.status(400).json({ error: "No available rooms found" });
+    }
 
     // Create a new pemesanan record
     const createdPemesanan = await pemesananModel.create({
@@ -87,14 +124,15 @@ app.post("/", async (req, res) => {
       tgl_check_out: tglCheckOut,
       nama_tamu,
       jumlah_kamar,
-      id_kamar,
+      id_tipe_kamar, // Change id_kamar to id_tipe_kamar
       id_user,
       status_pemesanan,
+      id_kamar: availableRoom.id,
     });
 
     await kamarModel.update(
       { tersedia: "Tidak Tersedia" },
-      { where: { id: id_kamar } }
+      { where: { id: availableRoom.id } }
     );
 
     console.log("Pemesanan inserted successfully");
@@ -105,7 +143,7 @@ app.post("/", async (req, res) => {
     if (req.body.detail_pemesanan && req.body.detail_pemesanan.length > 0) {
       const detailsOfPemesanan = req.body.detail_pemesanan.map((detail) => ({
         id_kamar: detail.id_kamar,
-        tgl_akses: today, // Use 'today' variable here
+        tgl_akses: new Date(), // Use the current date and time
         harga: detail.harga,
         id_pemesanan: pemesananID,
       }));

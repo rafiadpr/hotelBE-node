@@ -7,6 +7,9 @@ const md5 = require("md5");
 const userModel = require("../models/index").User;
 const app = express();
 const upload = multer({ dest: "uploads/" });
+const cors = require("cors");
+const port = 3000;
+app.use(cors());
 
 // Define routes for user operations
 app.get("/", async (req, res) => {

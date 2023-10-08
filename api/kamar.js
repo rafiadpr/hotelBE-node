@@ -2,13 +2,16 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const { Sequelize, Op } = require("sequelize");
-const sequelize = new Sequelize('hotelbe', 'root', '', {
-  host: 'localhost',
-  dialect: 'mysql', // or 'postgres', 'sqlite', etc.
+const sequelize = new Sequelize("hotelbe", "root", "", {
+  host: "localhost",
+  dialect: "mysql", // or 'postgres', 'sqlite', etc.
 });
 const kamarModel = require("../models/index").Kamar;
 const pemesananModel = require("../models/index").Pemesanan;
 const app = express();
+const cors = require("cors");
+const port = 3000;
+app.use(cors());
 
 // Define routes for kamar operations
 app.get("/", async (req, res) => {
@@ -100,38 +103,19 @@ app.post("/search", async (req, res) => {
   }
 });
 
-app.post("/available", async (req, res) => {
-  try {
-    // Use Op.iLike to perform a case-insensitive search
-    const kamar = await kamarModel.findAll({
-      where: {
-        tersedia: true,
-      },
-    });
-
-    if (kamar.length === 0) {
-      return res.status(404).json({ message: "No available kamar found" });
-    }
-
-    res.json(kamar);
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
 app.post("/find", async (req, res) => {
   try {
-    const { tgl_check_in, tgl_check_out } = req.body; // Assuming you get these dates from the request body
+    const { tgl_check_in, tgl_check_out, id_tipe_kamar } = req.body; // Assuming you get these parameters from the request body
 
     // Use Sequelize's `query` method to perform a custom SQL query
     const availableRooms = await sequelize.query(
       `
-      SELECT DISTINCT k.*
+      SELECT DISTINCT k.tersedia AS tipekamar
       FROM kamar AS k
       WHERE k.tersedia = true
+      AND k.id_tipe_kamar = :id_tipe_kamar
       AND k.id NOT IN (
-        SELECT p.id_kamar
+        SELECT p.id_tipe_kamar
         FROM pemesanan AS p
         WHERE (
           (p.tgl_check_in <= :tgl_check_in AND p.tgl_check_out >= :tgl_check_in)
@@ -141,13 +125,13 @@ app.post("/find", async (req, res) => {
       )
     `,
       {
-        replacements: { tgl_check_in, tgl_check_out },
+        replacements: { tgl_check_in, tgl_check_out, id_tipe_kamar },
         type: Sequelize.QueryTypes.SELECT,
       }
     );
 
     if (availableRooms.length === 0) {
-      return res.status(404).json({ message: "No available kamar found" });
+      return res.status(404).json({ message: "No available tipekamar found" });
     }
 
     res.json(availableRooms);

@@ -12,12 +12,13 @@ const pemesananRouter = require('./api/pemesanan');
 const kamarRouter = require('./api/kamar');
 const tipekamarRouter = require('./api/tipekamar');
 const userRouter = require('./api/user');
+const auth = require('./api/auth')
 
-// Use the pemesanan router for '/pemesanan' routes
 app.use('/pemesanan', pemesananRouter);
 app.use('/kamar', kamarRouter);
 app.use('/tipekamar', tipekamarRouter);
 app.use('/user', userRouter);
+app.use('/auth', auth);
 
 // Start the server
 app.listen(PORT, () => {
