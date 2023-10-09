@@ -11,7 +11,8 @@ const cors = require("cors");
 const port = 3000;
 app.use(cors());
 
-// Define routes for user operations
+app.use("/uploads", express.static("E:/private file/js/hotelBE/uploads"));
+
 app.get("/", async (req, res) => {
   try {
     const users = await userModel.findAll();
@@ -51,7 +52,6 @@ app.post("/", upload.single("foto"), async (req, res) => {
 app.put("/:id", upload.single("foto"), async (req, res) => {
   try {
     const { nama_user, email, password, role } = req.body;
-
     const userId = req.params.id;
 
     // Check if the record with the given ID exists
@@ -59,6 +59,15 @@ app.put("/:id", upload.single("foto"), async (req, res) => {
 
     if (!existingUser) {
       return res.status(404).json({ error: "Record not found" });
+    }
+
+    // Check if the provided email is already in use by another user
+    if (email && email !== existingUser.email) {
+      const emailExists = await userModel.findOne({ where: { email } });
+
+      if (emailExists) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
     }
 
     // Update the fields that have new values provided in the request body

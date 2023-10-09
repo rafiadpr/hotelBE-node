@@ -16,7 +16,8 @@ const cors = require("cors");
 const port = 3000;
 app.use(cors());
 
-// Define routes for tipe_kamar operations
+app.use('/uploads', express.static('E:/private file/js/hotelBE/uploads'));
+
 app.get("/", async (req, res) => {
   try {
     const tipekamar = await tipeKamarModel.findAll();
