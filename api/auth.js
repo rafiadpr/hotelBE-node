@@ -75,23 +75,6 @@ const authorize = (request, response, next) => {
 };
 
 app.use(express.json());
-
-// Endpoint for user login
 app.post("/login", authenticate);
-
-// Example protected routes
-app.get("/admin", authorize, (request, response) => {
-  response.json({
-    message: "Admin-only route",
-    user: request.user, // User information from the token
-  });
-});
-
-app.get("/receptionist", authorize, (request, response) => {
-  response.json({
-    message: "Receptionist-only route",
-    user: request.user, // User information from the token
-  });
-});
 
 module.exports = app;

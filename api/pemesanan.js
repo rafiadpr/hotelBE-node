@@ -267,7 +267,7 @@ app.post("/search", async (req, res) => {
           { tgl_check_out: { [Op.substring]: keyword } },
           { nama_tamu: { [Op.substring]: keyword } },
           { jumlah_kamar: { [Op.substring]: keyword } },
-          { id_kamar: { [Op.substring]: keyword } },
+          { id_tipe_kamar: { [Op.substring]: keyword } },
           { status_pemesanan: { [Op.substring]: keyword } },
           { id_user: { [Op.substring]: keyword } },
         ],
