@@ -1,28 +1,21 @@
-const express = require("express");
-const Op = require("sequelize").Op;
-const path = require("path");
-const fs = require("fs");
-const moment = require("moment");
-const PDFDocument = require("pdfkit");
-const kamarModel = require("../models/index").Kamar;
-const pemesananModel = require("../models/index").Pemesanan;
-const detailPemesananModel = require("../models/index").Detail_Pemesanan;
-const tipeKamarModel = require("../models/index").Tipe_Kamar;
-const userModel = require("../models/index").User;
+const express = require('express');
+const { Op } = require('sequelize');
+const moment = require('moment');
+const PDFDocument = require('pdfkit');
+
+const { Kamar, Pemesanan, DetailPemesanan, TipeKamar, User } = require('../models/index');
 const app = express();
-const cors = require("cors");
-const { sequelize } = require("../models/index");
+const cors = require('cors');
+
 const port = 3000;
 app.use(cors());
 
 function generateRandomNumber(n) {
-  return Math.floor(Math.random() * 10 ** n)
-    .toString()
-    .padStart(n, "0");
+  return Math.floor(Math.random() * 10 ** n).toString().padStart(n, '0');
 }
 
 async function isDuplicateBookingNumber(bookingNumber) {
-  const result = await pemesananModel.findOne({
+  const result = await Pemesanan.findOne({
     where: { nomor_pemesanan: bookingNumber },
   });
   return !!result;
@@ -36,43 +29,38 @@ async function generateUniqueBookingNumber() {
   return bookingNumber;
 }
 
-app.get("/checkin", async (req, res) => {
+app.get('/checkin', async (req, res) => {
   try {
-    // Get the tgl_check_in parameter from the query string
     const tglCheckIn = new Date(req.query.tgl_check_in);
     tglCheckIn.setHours(12, 0, 0);
 
-    // If tgl_check_in is provided in the query, use it for filtering
     if (tglCheckIn) {
-      const pemesanan = await pemesananModel.findOne({
+      const pemesanan = await Pemesanan.findOne({
         where: { tgl_check_in: tglCheckIn },
       });
       res.json(pemesanan);
     }
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.get("/", async (req, res) => {
+app.get('/', async (req, res) => {
   try {
-    const pemesanan = await pemesananModel.findAll();
+    const pemesanan = await Pemesanan.findAll();
     res.json(pemesanan);
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.post("/", async (req, res) => {
+app.post('/', async (req, res) => {
   try {
-    // Set tgl_pemesanan and tgl_check_in to today's date
     const today = new Date();
-    const tgl_pemesanan = today.toISOString().split("T")[0];
-
-    // Set status_pemesanan to "baru"
-    const status_pemesanan = "baru";
+    const tgl_pemesanan = today.toISOString().split('T')[0];
+    const status_pemesanan = 'baru';
 
     const {
       nomor_pemesanan,
@@ -82,23 +70,18 @@ app.post("/", async (req, res) => {
       tgl_check_out,
       nama_tamu,
       jumlah_kamar,
-      id_tipe_kamar, // Change id_kamar to id_tipe_kamar
+      id_tipe_kamar,
       id_user,
-      detail_pemesanan, // Include detail_pemesanan in the request body
+      detail_pemesanan,
     } = req.body;
 
     const nomorPemesanan = await generateUniqueBookingNumber();
-
-    // Tanggal check-in yang dimasukkan oleh pengguna
     const tglCheckIn = new Date(tgl_check_in);
-    tglCheckIn.setHours(12, 0, 0); // Set jam 12:00:00
-
-    // Tanggal check-out yang dimasukkan oleh pengguna
+    tglCheckIn.setHours(12, 0, 0);
     const tglCheckOut = new Date(tgl_check_out);
-    tglCheckOut.setHours(12, 0, 0); // Set jam 12:00:00
+    tglCheckOut.setHours(12, 0, 0);
 
-    // Periksa apakah ada pemesanan dengan tanggal check-in yang sama
-    const existingPemesanan = await pemesananModel.findOne({
+    const existingPemesanan = await Pemesanan.findOne({
       where: {
         tgl_check_in: tglCheckIn,
         tgl_check_out: tglCheckOut,
@@ -106,24 +89,22 @@ app.post("/", async (req, res) => {
       },
     });
 
-    const availableRooms = await kamarModel.findAll({
+    const availableRooms = await Kamar.findAll({
       where: {
-        tersedia: "Tersedia",
+        tersedia: 'Tersedia',
         id_tipe_kamar,
       },
     });
 
     if (availableRooms.length === 0) {
-      // Handle the case when no available rooms are found
-      return res.status(400).json({ error: "No available rooms found" });
+      return res.status(400).json({ error: 'No available rooms found' });
     }
 
-    // Create a new pemesanan record for the reservation
-    const createdPemesanan = await pemesananModel.create({
-      nomor_pemesanan: nomorPemesanan,
+    const createdPemesanan = await Pemesanan.create({
+      nomor_pemesanan,
       nama_pemesan,
       email_pemesan,
-      tgl_pemesanan: tgl_pemesanan,
+      tgl_pemesanan,
       tgl_check_in: tglCheckIn,
       tgl_check_out: tglCheckOut,
       nama_tamu,
@@ -131,132 +112,111 @@ app.post("/", async (req, res) => {
       id_tipe_kamar,
       id_user,
       status_pemesanan,
-      id_kamar: availableRooms[0].id, // Use the ID of the first available room
+      id_kamar: availableRooms[0].id,
     });
 
-    console.log("Pemesanan inserted successfully");
+    console.log('Pemesanan inserted successfully');
 
-    // Get the ID of the created pemesanan
     const pemesananID = createdPemesanan.id;
 
     if (detail_pemesanan && detail_pemesanan.length > 0) {
-      // Fetch the harga from the tipekamar table based on id_tipe_kamar
-      const tipeKamar = await tipeKamarModel.findOne({
-        where: { id: id_tipe_kamar },
-      });
+      const tipeKamar = await TipeKamar.findOne({ where: { id: id_tipe_kamar } });
 
       const detailsOfPemesanan = detail_pemesanan.map((detail) => ({
         id_kamar: detail.id_kamar,
         tgl_akses: new Date(),
-        harga: tipeKamar.harga, // Use the harga from the tipekamar table
+        harga: tipeKamar.harga,
         id_pemesanan: pemesananID,
       }));
 
-      const createdDetails = await detailPemesananModel.bulkCreate(
-        detailsOfPemesanan
-      );
+      const createdDetails = await DetailPemesanan.bulkCreate(detailsOfPemesanan);
 
-      // Mark the reserved rooms as "Tidak Tersedia"
-      await kamarModel.update(
-        { tersedia: "Tidak Tersedia" },
+      await Kamar.update(
+        { tersedia: 'Tidak Tersedia' },
         { where: { id: detailsOfPemesanan.map((detail) => detail.id_kamar) } }
       );
 
       return res.json({
         success: true,
-        message: `New pemesanan has been inserted with details.`,
+        message: 'New pemesanan has been inserted with details.',
       });
     }
 
     res.status(201).json({
-      message: "Data inserted successfully",
-      data: createdPemesanan, // Include the created pemesanan data in the response
+      message: 'Data inserted successfully',
+      data: createdPemesanan,
     });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// Update an existing pemesanan by ID
-app.put("/:id", async (req, res) => {
+app.put('/:id', async (req, res) => {
   try {
     const pemesananID = req.params.id;
-
-    // Check if the pemesanan exists
-    const existingPemesanan = await pemesananModel.findOne({
+    const existingPemesanan = await Pemesanan.findOne({
       where: {
         id: pemesananID,
       },
     });
 
     if (!existingPemesanan) {
-      return res.status(404).json({ error: "Pemesanan not found" });
+      return res.status(404).json({ error: 'Pemesanan not found' });
     }
 
-    // Update the pemesanan data
     const updatedPemesanan = await existingPemesanan.update(req.body);
 
-    console.log("Pemesanan updated successfully");
+    console.log('Pemesanan updated successfully');
 
     res.json({
       success: true,
-      message: "Pemesanan updated successfully",
+      message: 'Pemesanan updated successfully',
       data: updatedPemesanan,
     });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.delete("/:id", async (req, res) => {
+app.delete('/:id', async (req, res) => {
   try {
     const pemesananID = req.params.id;
-
-    // Check if the pemesanan record exists
-    const existingPemesanan = await pemesananModel.findOne({
+    const existingPemesanan = await Pemesanan.findOne({
       where: { id: pemesananID },
     });
 
     if (!existingPemesanan) {
-      return res.status(404).json({ error: "Pemesanan not found" });
+      return res.status(404).json({ error: 'Pemesanan not found' });
     }
 
-    // Get the associated kamar ID
     const id_kamar = existingPemesanan.id_kamar;
 
-    // Delete associated data in detailpemesanan table
-    await detailPemesananModel.destroy({
-      where: { id_pemesanan: pemesananID },
-    });
+    await DetailPemesanan.destroy({ where: { id_pemesanan: pemesananID } });
 
-    // Update the kamar table's tersedia column to "tersedia"
-    await kamarModel.update(
-      { tersedia: "Tersedia" },
+    await Kamar.update(
+      { tersedia: 'Tersedia' },
       { where: { id: id_kamar } }
     );
 
-    // Delete the pemesanan record
-    await pemesananModel.destroy({
-      where: { id: pemesananID },
-    });
+    await Pemesanan.destroy({ where: { id: pemesananID } });
 
     res.json({
       success: true,
-      message: "Data deleted successfully",
-    }); // Send a 204 No Content response for successful deletion
+      message: 'Data deleted successfully',
+    });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.post("/search", async (req, res) => {
+app.post('/search', async (req, res) => {
   try {
     const { keyword } = req.body;
 
-    const pemesanan = await pemesananModel.findAll({
+    const pemesanan = await Pemesanan.findAll({
       where: {
         [Op.or]: [
           { nomor_pemesanan: { [Op.substring]: keyword } },
@@ -276,21 +236,20 @@ app.post("/search", async (req, res) => {
 
     res.json(pemesanan);
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.get("/print/:id", async (req, res) => {
+app.get('/print/:id', async (req, res) => {
   try {
-    const reservation = await pemesananModel.findByPk(req.params.id);
+    const reservation = await Pemesanan.findByPk(req.params.id);
+
     if (!reservation) {
-      return res.status(404).json({ error: "Reservation not found" });
+      return res.status(404).json({ error: 'Reservation not found' });
     }
 
-    // You can format the receipt data here
     const receipt = {
-      // Add the relevant reservation data here
       id: reservation.id,
       nomor_pemesanan: reservation.nomor_pemesanan,
       nama_pemesan: reservation.nama_pemesan,
@@ -307,7 +266,7 @@ app.get("/print/:id", async (req, res) => {
     res.json(receipt);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

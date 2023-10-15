@@ -1,22 +1,23 @@
 const express = require("express");
-const path = require("path");
-const fs = require("fs");
+const cors = require("cors");
 const { Sequelize, Op } = require("sequelize");
+
 const sequelize = new Sequelize("hotelbe", "root", "", {
   host: "localhost",
   dialect: "mysql", // or 'postgres', 'sqlite', etc.
 });
-const kamarModel = require("../models/index").Kamar;
-const pemesananModel = require("../models/index").Pemesanan;
-const app = express();
-const cors = require("cors");
-const port = 3000;
-app.use(cors());
 
-// Define routes for kamar operations
+const { Kamar, Pemesanan } = require("../models/index");
+
+const app = express();
+const port = 3000;
+
+app.use(cors());
+app.use(express.json());
+
 app.get("/", async (req, res) => {
   try {
-    const kamar = await kamarModel.findAll();
+    const kamar = await Kamar.findAll();
     res.json(kamar);
   } catch (error) {
     console.error("Error:", error);
@@ -24,15 +25,14 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Route for creating a new kamar record
 app.post("/", async (req, res) => {
   try {
     const { nomor_kamar, id_tipe_kamar, tersedia } = req.body;
 
-    const createdKamar = await kamarModel.create({
-      nomor_kamar: nomor_kamar,
-      id_tipe_kamar: id_tipe_kamar,
-      tersedia: tersedia,
+    const createdKamar = await Kamar.create({
+      nomor_kamar,
+      id_tipe_kamar,
+      tersedia,
     });
 
     console.log("Data inserted successfully");
@@ -51,18 +51,16 @@ app.put("/:id", async (req, res) => {
     const { nomor_kamar, id_tipe_kamar, tersedia } = req.body;
     const kamarId = req.params.id;
 
-    // Check if the kamar with the specified ID exists
-    const existingKamar = await kamarModel.findByPk(kamarId);
+    const existingKamar = await Kamar.findByPk(kamarId);
 
     if (!existingKamar) {
       return res.status(404).json({ error: "Kamar not found" });
     }
 
-    // Update the kamar data
     await existingKamar.update({
-      nomor_kamar: nomor_kamar,
-      id_tipe_kamar: id_tipe_kamar,
-      tersedia: tersedia,
+      nomor_kamar,
+      id_tipe_kamar,
+      tersedia,
     });
 
     console.log("Data updated successfully");
@@ -80,8 +78,7 @@ app.post("/search", async (req, res) => {
   try {
     const { keyword } = req.body;
 
-    // Use Op.iLike to perform a case-insensitive search
-    const kamar = await kamarModel.findAll({
+    const kamar = await Kamar.findAll({
       where: {
         [Op.or]: [
           { id: { [Op.substring]: keyword } },
@@ -105,9 +102,8 @@ app.post("/search", async (req, res) => {
 
 app.post("/find", async (req, res) => {
   try {
-    const { tgl_check_in, tgl_check_out, id_tipe_kamar } = req.body; // Assuming you get these parameters from the request body
+    const { tgl_check_in, tgl_check_out, id_tipe_kamar } = req.body;
 
-    // Use Sequelize's `query` method to perform a custom SQL query
     const availableRooms = await sequelize.query(
       `
       SELECT DISTINCT k.tersedia AS tipekamar
@@ -145,8 +141,7 @@ app.delete("/:id", async (req, res) => {
   try {
     const kamarId = req.params.id;
 
-    // Find the kamar by ID and delete it
-    const deletedKamar = await kamarModel.destroy({
+    const deletedKamar = await Kamar.destroy({
       where: {
         id: kamarId,
       },

@@ -1,43 +1,46 @@
-const express = require("express");
-const md5 = require("md5");
-const jwt = require("jsonwebtoken");
-const userModel = require("../models/index").User;
+const express = require('express');
+const md5 = require('md5');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const { User } = require('../models/index'); // Use ES6 destructuring and correct import path
+
 const app = express();
 const port = 3000;
+
 app.use(cors());
+app.use(express.json());
+
+// Constants for secret keys
+const AUTH_SECRET = 'mokleters';
 
 // Middleware for user authentication
-const authenticate = async (request, response, next) => {
+const authenticate = async (request, response) => {
   try {
-    const dataLogin = {
-      email: request.body.email,
-      password: md5(request.body.password),
-    };
+    const { email, password } = request.body;
+    const hashedPassword = md5(password);
 
-    const dataUser = await userModel.findOne({ where: dataLogin });
+    const user = await User.findOne({ where: { email, password: hashedPassword } });
 
-    if (dataUser) {
+    if (user) {
       const payload = {
-        id: dataUser.id,
-        email: dataUser.email,
-        role: dataUser.role,
+        id: user.id,
+        email: user.email,
+        role: user.role,
       };
-      const secret = "mokleters";
-      const token = jwt.sign(payload, secret, { expiresIn: "1h" });
+      const token = jwt.sign(payload, AUTH_SECRET, { expiresIn: '1h' });
 
       response.json({
         success: true,
         logged: true,
-        message: "Authentication Successed",
-        token: token,
-        data: dataUser,
+        message: 'Authentication Successful',
+        token,
+        data: user,
       });
     } else {
       response.status(401).json({
         success: false,
         logged: false,
-        message: "Authentication Failed. Invalid email or password",
+        message: 'Authentication Failed. Invalid email or password',
       });
     }
   } catch (error) {
@@ -45,36 +48,34 @@ const authenticate = async (request, response, next) => {
     response.status(500).json({
       success: false,
       logged: false,
-      message: "Internal server error",
+      message: 'Internal Server Error',
     });
   }
 };
 
 // Middleware for authorization
 const authorize = (request, response, next) => {
-  const headers = request.headers.authorization;
-  const tokenKey = headers && headers.split(" ")[1];
+  const { authorization } = request.headers;
+  const tokenKey = authorization && authorization.split(' ')[1];
 
-  if (tokenKey == null) {
+  if (!tokenKey) {
     return response.status(401).json({
       success: false,
-      message: "Unauthorized User",
+      message: 'Unauthorized User',
     });
   }
 
-  const secret = "mokleters";
-  jwt.verify(tokenKey, secret, (error, user) => {
+  jwt.verify(tokenKey, AUTH_SECRET, (error, user) => {
     if (error) {
       return response.status(401).json({
         success: false,
-        message: "Invalid token",
+        message: 'Invalid Token',
       });
     }
     next();
   });
 };
 
-app.use(express.json());
-app.post("/login", authenticate);
+app.post('/login', authenticate);
 
 module.exports = app;

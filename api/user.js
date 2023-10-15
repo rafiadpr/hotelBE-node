@@ -70,24 +70,12 @@ app.put("/:id", upload.single("foto"), async (req, res) => {
       }
     }
 
-    // Update the fields that have new values provided in the request body
-    if (nama_user) {
-      existingUser.nama_user = nama_user;
-    }
-    if (email) {
-      existingUser.email = email;
-    }
-    if (password) {
-      existingUser.password = md5(password);
-    }
-    if (role) {
-      existingUser.role = role;
-    }
+    if (nama_user) existingUser.nama_user = nama_user;
+    if (email) existingUser.email = email;
+    if (password) existingUser.password = md5(password);
+    if (role) existingUser.role = role;
 
-    // Check if a file has been uploaded
-    if (req.file) {
-      existingUser.foto = req.file.filename; // Update the photo if a new one is provided
-    }
+    if (req.file) existingUser.foto = req.file.filename;
 
     const updatedUser = await existingUser.save();
 
